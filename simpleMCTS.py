@@ -34,8 +34,8 @@ class state():
         return (len(unexplored)>0) or (len(unexplored)==0 and len(self.children)==0), unexplored
     def backprop(self, winner):
         self.visits+=1
-        self.wins+=(winner==self.parent.player)
         if(self.parent is not None):
+            self.wins+=(winner==self.parent.player)
             return self.parent.backprop(winner)
         return self
     def get_score(self):
