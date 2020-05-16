@@ -8,6 +8,7 @@ def getplayer(turn):
         return -1
     return 1
 def getboard(move, board, player):
+    assert board[move[0]][move[1]]==0
     board[move[0]][move[1]] = player
     return board
 def game_finished(board):
