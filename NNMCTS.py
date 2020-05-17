@@ -41,18 +41,7 @@ class state():
                     unexplored.append(a)
             except:
                 continue
-        ps = [i.P for i in self.children+unexplored]
-        good_ps = []
-        num = math.floor(self.elitism*len(ps))
-        for i in range(num):
-            m = max(ps)
-            ps.pop(ps.index(m))
-            good_ps.append(m)
-        good_unexplored = []
-        for i in range(len(unexplored)):
-            if(unexplored[i].P in good_ps):
-                good_unexplored.append(unexplored[i])
-        return (len(good_unexplored)>0) or (len(good_unexplored)==0 and len(good_self.children)==0), good_unexplored
+        return (len(unexplored)>0) or (len(unexplored)==0 and len(self.children)==0), unexplored
     def backprop(self):
         self.visits+=1
         #write some stuff to avg V with V of all children (and grandchildren to the end of the simulation) playing as the same player, gives Q
