@@ -1,7 +1,7 @@
 import math
 from copy import deepcopy
 class state():
-    def __init__(self, board, turn, c, game, parent=None, move=None):
+    def __init__(self, board, turn, c, game, parent=None, move=None, P=None):
         self.board = board
         self.visits = 0
         self.turn = turn
@@ -14,7 +14,7 @@ class state():
         self.game = game
         self.parent = parent
         self.c = c
-        self.P = 0
+        self.P = P
         self.Q = 0
         self.W = {}
         self.V = {}
@@ -26,8 +26,7 @@ class state():
     def new_child(self, move, P):
         board = deepcopy(self.board)
         board = self.getboard(move, board, self.player)
-        child = state(board, self.turn+1, self.c, self.game, self, move)
-        child.P = P
+        child = state(board, self.turn+1, self.c, self.game, self, move, P)
         return child
     def add_child(self, child):
         self.children.append(child)
