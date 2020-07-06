@@ -5,6 +5,7 @@ c = .5
 class connect6():
     def __init__(self):
         self.moveset  = [[i, j] for i in range(19) for j in range(19)]
+        self.players = [-1, 1]
     def getplayer(self, turn):
         m4 = turn%4
         if(m4 in [0, 1]):
