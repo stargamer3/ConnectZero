@@ -1,5 +1,6 @@
 import math
 from copy import deepcopy
+import numpy as np
 class state():
     def __init__(self, board, turn, c, game, parent=None, move=None, P=None):
         self.board = board
@@ -24,40 +25,35 @@ class state():
         self.children = []
         self.move = move
     def new_child(self, move, P):
-        board = deepcopy(self.board)
-        board = self.getboard(move, board, self.player)
-        child = state(board, self.turn+1, self.c, self.game, self, move, P)
+        child = state(None, self.turn+1, self.c, self.game, self, move, P)
         return child
     def add_child(self, child):
         self.children.append(child)
         return self
     def is_leaf(self):
         if(len(self.children)!=0):
-            return False, []
-        unexplored = []
-        for i in self.moveset:
-            if(self.movelegal(self.board, i)):
-                unexplored.append(i)
-        return True, unexplored
-    def backprop(self, W=None):
+            return False
+        return True
+    def backprop(self, V=None):
         self.visits+=1
-        if(W is None):
-            W = {}
+        if(V is None):
+            V = {}
             for i in self.players:
-                W[i] = 0
+                V[i] = self.V[i]
+        for i in self.players:
+            self.W[i]+=V[i]
         if(self.parent is not None):
-            for i in players:
-                self.W[i]+=W[i]
-            self.Q = (self.W[self.parent.player]+self.V[self.parent.player])/self.visits
-            bpW = {}
-            for i in players:
-                bpW[i] = self.W[i]+self.V[i]
-            return self.parent.backprop(bpW)
+            self.Q = self.W[self.parent.player]/self.visits
+            return self.parent.backprop(self.V)
         return self
     def get_score(self):
         if(self.parent is not None):
             return self.Q+self.c*self.P*math.sqrt(self.parent.visits)/(self.visits+1)
         return 0
+    def get_board(self):
+        if(self.board is None):
+            self.board = deepcopy(self.parent.board)
+            self.board = self.getboard(self.move, self.board, self.parent.player)
     def choose_child(self):
         scores = []
         for i in self.children:
