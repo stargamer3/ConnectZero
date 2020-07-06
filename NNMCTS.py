@@ -1,52 +1,48 @@
 import math
 from copy import deepcopy
 class state():
-    def __init__(self, board, turn, getplayer, getboard, c, moveset, network, fast_policy, getnninp, getP, elitism, parent=None, move=None):
+    def __init__(self, board, turn, c, game, parent=None, move=None):
         self.board = board
         self.visits = 0
-        self.network = network
-        self.fast_policy = fast_policy
-        self.getnninp = getnninp
-        self.getP = getP
-        self.elitism = elitism
-        self.V = 0
-        self.P = 0
-        self.Q = 0
-        if(self.parent is not None):
-            self.V = (1+network.predict(getnninp(board, self.parent.turn))[0][-1])/2
-            self.P = getP(network.predict(getnninp(self.parent.board, self.parent.turn))[0][:-1], self.move)
         self.turn = turn
-        self.player = getplayer(turn)
-        self.getplayer = getplayer
-        self.getboard = getboard
-        self.moveset = moveset
+        self.player = game.getplayer(turn)
+        self.getplayer = game.getplayer
+        self.getboard = game.getboard
+        self.moveset = game.moveset
+        self.movelegal = game.movelegal
+        self.game = game
         self.parent = parent
         self.c = c
+        self.P = 0
+        self.Q = 0
+        self.W = [0, 0]
+        self.V = [0, 0]
         self.children = []
         self.move = move
-    def new_child(self, move):
+    def new_child(self, move, P):
         board = deepcopy(self.board)
         board = self.getboard(move, board, self.player)
-        child = state(board, self.turn+1, self.getplayer, self.getboard, self.c, self.moveset, self, move)
+        child = state(board, self.turn+1, self.c, self.game, self, move)
+        child.P = P
         return child
     def add_child(self, child):
         self.children.append(child)
         return self
     def is_leaf(self):
+        if(len(self.children)!=0):
+            return False, []
         unexplored = []
         for i in self.moveset:
-            try:
-                a = self.new_child(i)
-                if(a.board not in [k.board for k in self.children]):
-                    unexplored.append(a)
-            except:
-                continue
-        return (len(unexplored)>0) or (len(unexplored)==0 and len(self.children)==0), unexplored
-    def backprop(self):
+            if(self.movelegal(self.board, i)):
+                unexplored.append(i)
+        return True, unexplored
+    def backprop(self, W=[0, 0]):
         self.visits+=1
-        #write some stuff to avg V with V of all children (and grandchildren to the end of the simulation) playing as the same player, gives Q
         if(self.parent is not None):
-            return self.parent.backprop()
+            self.W[0]+=W[0]
+            self.W[1]+=W[1]
+            self.Q = (self.W[(self.parent.player+1)//2]+self.V[(self.parent.player+1)//2])/self.visits
+            return self.parent.backprop([self.W[0]+self.V[0], self.W[1]+self.V[1]])
         return self
     def get_score(self):
         if(self.parent is not None):
