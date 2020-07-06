@@ -1,15 +1,17 @@
 import math
 from copy import deepcopy
 class state():
-    def __init__(self, board, turn, getplayer, getboard, c, moveset, parent=None, move=None):
+    def __init__(self, board, turn, c, game, parent=None, move=None):
         self.board = board
         self.visits = 0
         self.wins = 0
         self.turn = turn
-        self.player = getplayer(turn)
-        self.getplayer = getplayer
-        self.getboard = getboard
-        self.moveset = moveset
+        self.player = game.getplayer(turn)
+        self.getplayer = game.getplayer
+        self.getboard = game.getboard
+        self.moveset = game.moveset
+        self.movelegal = game.movelegal
+        self.game = game
         self.parent = parent
         self.c = c
         self.children = []
@@ -17,20 +19,17 @@ class state():
     def new_child(self, move):
         board = deepcopy(self.board)
         board = self.getboard(move, board, self.player)
-        child = state(board, self.turn+1, self.getplayer, self.getboard, self.c, self.moveset, self, move)
+        child = state(board, self.turn+1, self.c, self.game, self, move)
         return child
     def add_child(self, child):
         self.children.append(child)
         return self
     def is_leaf(self):
         unexplored = []
+        exploredmoves = [i.move for i in self.children]
         for i in self.moveset:
-            try:
-                a = self.new_child(i)
-                if(a.board not in [k.board for k in self.children]):
-                    unexplored.append(a)
-            except:
-                continue
+            if(self.movelegal(self.board, i) and i not in exploredmoves):
+                unexplored.append(i)
         return (len(unexplored)>0) or (len(unexplored)==0 and len(self.children)==0), unexplored
     def backprop(self, winner):
         self.visits+=1
