@@ -153,10 +153,32 @@ class connect6():
         p1inp = np.array(p1inp)
         p2inp = np.array(p2inp)
         inp = np.concatenate((playerinp, p1inp, p2inp), axis=-1).reshape((1, 19, 19, 3))
+        playerinp = np.ones((19, 19, 1))*player*-1
+        p1inp = []
+        p2inp = []
+        for i in board:
+            temp1 = []
+            temp2 = []
+            for j in i:
+                if(j==1):
+                    temp1.append([1])
+                else:
+                    temp1.append([0])
+                if(j==-1):
+                    temp2.append([1])
+                else:
+                    temp2.append([0])
+            p1inp.append(temp1)
+            p2inp.append(temp2)
+        p1inp = np.array(p1inp)
+        p2inp = np.array(p2inp)
+        inp2 = np.concatenate((playerinp, p1inp, p2inp), axis=-1).reshape((1, 19, 19, 3))
+        inp = np.concatenate((inp, inp2))
         nnout = model.predict(inp)
         policy = nnout[0][:-1]
-        value = (nnout[0][-1]+1)/2
-        return policy, value
+        value1 = nnout[0][-1]
+        value2 = nnout[1][-1]
+        return policy, {player: value1, -1*player: value2}
 def get_visits(board, turn, its, game):
     i_state = state(board, turn, c, game)
     depth = 0
@@ -172,10 +194,8 @@ def get_visits(board, turn, its, game):
         finished = game.game_finished(sim_state.board, sim_state.move, k)[0]
         if(leaf):
             nnstuff = game.getnnstuff(sim_state.board, sim_state.player)
-            for i in game.players:
-                if(i!=sim_state.player):
-                    sim_state.V[i] = game.getnnstuff(sim_state.board, i)[1]
-            sim_state.V[sim_state.player] = nnstuff[1]
+            for i in nnstuff[1]:
+                sim_state.V[i] = nnstuff[1][i]
             if(not finished):
                 for i, j in enumerate(game.moveset):
                     if(game.movelegal(sim_state.board, j)):
