@@ -3,6 +3,30 @@ import random
 import time
 import numpy as np
 import math
+import tensorflow as tf
+from tensorflow import keras
+import tensorflow.keras.backend as K
+from tensorflow.keras.layers import Input, Dense, Conv2D, BatchNormalization, Add, Concatenate, Flatten
+from tensorflow.keras.models import Model
+inp = Input(shape=(19, 19, 3))
+x = Conv2D(256, (5, 5), padding="same", activation="relu")(inp)
+x1 = Conv2D(256, (5, 5), padding="same", activation="relu")(x)
+x = Add()([x, x1])
+x = BatchNormalization()(x)
+x = Conv2D(128, (4, 4), strides=(2, 2), activation="relu")(x)
+x1 = Conv2D(128, (4, 4), padding="same", activation="relu")(x)
+x = Add()([x, x1])
+x = BatchNormalization()(x)
+x = Conv2D(128, (3, 3), strides=(2, 2), activation="relu")(x)
+x1 = Conv2D(128, (3, 3), strides=(2, 2), activation="relu")(x)
+x = Add()([x, x1])
+x = BatchNormalization()(x)
+x = Flatten()(x)
+x = Dense(256, activation="relu")(x)
+policy = Dense(361, activation="softmax")(x)
+value = Dense(1, activation="tanh")(x)
+out = Concatenate()([policy, value])
+model = Model(inp, out)
 c = 20
 class connect6():
     def __init__(self):
@@ -110,14 +134,30 @@ class connect6():
             return True, ccolor
         return False, 0
     def getnnstuff(self, board, player):
-        policy = []
-        for i in self.moveset:
-            if(self.movelegal(board, i)):
-                policy.append(random.random())
-            else:
-                policy.append(0)
-        policy = np.array(policy)/sum(policy)
-        return policy, random.random()
+        playerinp = np.ones((19, 19, 1))*player
+        p1inp = []
+        p2inp = []
+        for i in board:
+            temp1 = []
+            temp2 = []
+            for j in i:
+                if(j==1):
+                    temp1.append([1])
+                else:
+                    temp1.append([0])
+                if(j==-1):
+                    temp2.append([1])
+                else:
+                    temp2.append([0])
+            p1inp.append(temp1)
+            p2inp.append(temp2)
+        p1inp = np.array(p1inp)
+        p2inp = np.array(p2inp)
+        inp = np.concatenate((playerinp, p1inp, p2inp), axis=-1).reshape((1, 19, 19, 3))
+        nnout = model.predict(inp)
+        policy = nnout[0][:-1]
+        value = (nnout[0][-1]+1)/2
+        return policy, value
 def get_visits(board, turn, its, game):
     i_state = state(board, turn, c, game)
     depth = 0
@@ -150,5 +190,5 @@ def get_visits(board, turn, its, game):
 board = [[0 for i in range(19)] for j in range(19)]
 turn = -1
 t = time.time()
-shit = get_visits(board, turn, 1600, connect6())
+shit = get_visits(board, turn, 1083, connect6())
 print(time.time()-t)
