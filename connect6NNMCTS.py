@@ -26,7 +26,7 @@ policy = Dense(361, activation="softmax")(x)
 value = Dense(1, activation="tanh")(x)
 out = Concatenate()([policy, value])
 model = Model(inp, out)
-c = 20
+c = 5
 class connect6():
     def __init__(self):
         self.moveset  = [[i, j] for i in range(19) for j in range(19)]
@@ -209,5 +209,5 @@ def get_visits(board, turn, its, game):
 board = [[0 for i in range(19)] for j in range(19)]
 turn = -1
 t = time.time()
-shit = get_visits(board, turn, 1083, connect6())
+shit = get_visits(board, turn, 512, connect6())
 print(time.time()-t)
