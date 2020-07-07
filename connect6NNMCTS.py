@@ -7,25 +7,17 @@ import tensorflow as tf
 from tensorflow import keras
 import tensorflow.keras.backend as K
 from tensorflow.keras.layers import Input, Dense, Conv2D, BatchNormalization, Add, Concatenate, Flatten
-from tensorflow.keras.models import Model
-inp = Input(shape=(19, 19, 3))
-x = Conv2D(256, (5, 5), padding="same", activation="relu")(inp)
-x1 = Conv2D(256, (5, 5), padding="same", activation="relu")(x)
-x = Add()([x, x1])
-x = BatchNormalization()(x)
-x = Conv2D(128, (4, 4), strides=(2, 2), activation="relu")(x)
-x1 = Conv2D(128, (4, 4), padding="same", activation="relu")(x)
-x = Add()([x, x1])
-x = BatchNormalization()(x)
-x = Conv2D(128, (3, 3), strides=(2, 2), activation="relu")(x)
-x1 = Conv2D(128, (3, 3), activation="relu")(x)
-x = Add()([x, x1])
-x = BatchNormalization()(x)
-x = Flatten()(x)
-policy = Dense(361, activation="softmax")(x)
-value = Dense(1, activation="tanh")(x)
-out = Concatenate()([policy, value])
-model = Model(inp, out)
+from tensorflow.keras.models import Model, save_model, load_model
+from tensorflow.keras.losses import mean_squared_error, categorical_crossentropy
+def loss(y_true, y_pred):
+    mask = np.zeros((1, 362))
+    mask[-1] = 1
+    value_loss = mean_squared_error(K.sum(mask*y_true, axis=-1), K.sum(mask*y_pred, axis=-1))
+    mask = 1-mask
+    policy_loss = categorical_crossentropy(K.sum(mask*y_true, axis=-1), K.sum(mask*y_pred, axis=-1))
+    return value_loss+policy_loss
+model = load_model("Connect6.h5", compile=False)
+model.compile(optimizer="nadam", loss=loss)
 c = 5
 class connect6():
     def __init__(self):
