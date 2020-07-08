@@ -2,6 +2,7 @@ from NNMCTS import state
 import random
 import time
 import numpy as np
+from copy import deepcopy
 import math
 import tensorflow as tf
 from tensorflow import keras
@@ -19,6 +20,7 @@ def loss(y_true, y_pred):
 model = load_model("Connect6.h5", compile=False)
 model.compile(optimizer="nadam", loss=loss)
 c = 5
+temperature = 1
 class connect6():
     def __init__(self):
         self.moveset  = [[i, j] for i in range(19) for j in range(19)]
@@ -60,7 +62,7 @@ class connect6():
         return False, 0
     '''
     def game_finished(self, board, lastmove, depth):
-        if(depth==361):
+        if(depth==210): #speed
             return True, 0
         if(lastmove is None):
             return False, 0
@@ -196,10 +198,20 @@ def get_visits(board, turn, its, game):
                 k+=1
         i_state = sim_state.backprop()
         depth = max([depth, k])
-    i_state.children.sort(key=lambda x: x.move)
-    return [i.visits for i in i_state.children], depth, i_state.visits, i_state.children
+    return [i.visits for i in i_state.children], depth, i_state.visits, [i.move for i in i_state.children]
+game = connect6()
 board = [[0 for i in range(19)] for j in range(19)]
 turn = -1
-t = time.time()
-shit = get_visits(board, turn, 512, connect6())
-print(time.time()-t)
+finished = False
+while(not finished):
+    mcts = get_visits(board, turn, 512, game)
+    visits = mcts[0]
+    moves = mcts[3]
+    policy = np.array(visits)**(1/temperature)
+    policy/=sum(policy)
+    policy = policy.tolist()
+    move = moves[random.choices(range(len(policy)), weights=policy, k=1)[0]]
+    board = game.getboard(move, board, game.getplayer(turn))
+    turn+=1
+    finished = game.game_finished(board, move, turn+1)[0]
+print(game.game_finished(board, move, turn+1)[1])
