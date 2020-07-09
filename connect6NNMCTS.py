@@ -12,13 +12,13 @@ from tensorflow.keras.models import Model, save_model, load_model
 from tensorflow.keras.losses import mean_squared_error, categorical_crossentropy
 def loss(y_true, y_pred):
     mask = np.zeros((1, 362))
-    mask[-1] = 1
-    value_loss = mean_squared_error(K.sum(mask*y_true, axis=-1), K.sum(mask*y_pred, axis=-1))
+    mask[0][-1] = 1
+    value_loss = mean_squared_error(mask*y_true, mask*y_pred)
     mask = 1-mask
-    policy_loss = categorical_crossentropy(K.sum(mask*y_true, axis=-1), K.sum(mask*y_pred, axis=-1))
-    return value_loss+policy_loss
+    policy_loss = K.sum(categorical_crossentropy(mask*y_true, mask*y_pred))
+    return policy_loss+value_loss
 model = load_model("Connect6.h5", compile=False)
-model.compile(optimizer="nadam", loss=loss)
+model.compile(optimizer="adam", loss=loss)
 c = 5
 temperature = 1
 class connect6():
@@ -126,7 +126,7 @@ class connect6():
         if(mlen==6):
             return True, ccolor
         return False, 0
-    def getnnstuff(self, board, player):
+    def getnninp(self, board, player):
         playerinp = np.ones((19, 19, 1))*player
         p1inp = []
         p2inp = []
@@ -147,26 +147,10 @@ class connect6():
         p1inp = np.array(p1inp)
         p2inp = np.array(p2inp)
         inp = np.concatenate((playerinp, p1inp, p2inp), axis=-1).reshape((1, 19, 19, 3))
-        playerinp = np.ones((19, 19, 1))*player*-1
-        p1inp = []
-        p2inp = []
-        for i in board:
-            temp1 = []
-            temp2 = []
-            for j in i:
-                if(j==1):
-                    temp1.append([1])
-                else:
-                    temp1.append([0])
-                if(j==-1):
-                    temp2.append([1])
-                else:
-                    temp2.append([0])
-            p1inp.append(temp1)
-            p2inp.append(temp2)
-        p1inp = np.array(p1inp)
-        p2inp = np.array(p2inp)
-        inp2 = np.concatenate((playerinp, p1inp, p2inp), axis=-1).reshape((1, 19, 19, 3))
+        return inp
+    def getnnstuff(self, board, player):
+        inp = self.getnninp(board, player)
+        inp2 = self.getnninp(board, player*-1)
         inp = np.concatenate((inp, inp2))
         nnout = model.predict(inp)
         policy = nnout[0][:-1]
@@ -200,18 +184,54 @@ def get_visits(board, turn, its, game):
         depth = max([depth, k])
     return [i.visits for i in i_state.children], depth, i_state.visits, [i.move for i in i_state.children]
 game = connect6()
-board = [[0 for i in range(19)] for j in range(19)]
-turn = -1
-finished = False
-while(not finished):
-    mcts = get_visits(board, turn, 512, game)
-    visits = mcts[0]
-    moves = mcts[3]
-    policy = np.array(visits)**(1/temperature)
-    policy/=sum(policy)
-    policy = policy.tolist()
-    move = moves[random.choices(range(len(policy)), weights=policy, k=1)[0]]
-    board = game.getboard(move, board, game.getplayer(turn))
-    turn+=1
-    finished = game.game_finished(board, move, turn+1)[0]
-print(game.game_finished(board, move, turn+1)[1])
+n_games = 0
+while True:
+    t = time.time()
+    board = [[0 for i in range(19)] for j in range(19)]
+    turn = -1
+    finished = False
+    p1inps = []
+    p2inps = []
+    p1policies = []
+    p2policies = []
+    while(not finished):
+        mcts = get_visits(board, turn, 512, game)
+        visits = mcts[0]
+        moves = mcts[3]
+        policy = np.array(visits)**(1/temperature)
+        policy/=sum(policy)
+        fpolicy = np.zeros(361)
+        for i, j in enumerate(moves):
+            fpolicy[j[0]+j[1]*19] = policy[i]
+        if(game.getplayer(turn)==1):
+            p1inps.append(game.getnninp(board, game.getplayer(turn))[0])
+            p1policies.append(np.array(fpolicy))
+        else:
+            p2inps.append(game.getnninp(board, game.getplayer(turn))[0])
+            p2policies.append(np.array(fpolicy))
+        policy = policy.tolist()
+        move = moves[random.choices(range(len(policy)), weights=policy, k=1)[0]]
+        board = game.getboard(move, board, game.getplayer(turn))
+        turn+=1
+        finished = game.game_finished(board, move, turn+1)[0]
+    winner = game.game_finished(board, move, turn+1)[1]
+    if(winner==0):
+        p1reward = 0
+        p2reward = 0
+    else:
+        p1reward = (winner==1)*2-1
+        p2reward = -1*p1reward
+    for i in range(len(p1policies)):
+        p1policies[i] = np.append(p1policies[i], p1reward)
+    for i in range(len(p2policies)):
+        p2policies[i] = np.append(p2policies[i], p2reward)
+    p1inps = np.array(p1inps)
+    p2inps = np.array(p2inps)
+    p1policies = np.array(p1policies)
+    p2policies = np.array(p2policies)
+    print(model.train_on_batch(p1inps, p1policies))
+    print(model.train_on_batch(p2inps, p2policies))
+    print(game.game_finished(board, move, turn+1)[1])
+    n_games+=1
+    print(n_games)
+    print(time.time()-t)
