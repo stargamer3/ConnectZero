@@ -44,7 +44,7 @@ class state():
             self.W[i]+=V[i]
         if(self.parent is not None):
             self.Q = self.W[self.parent.player]/self.visits
-            return self.parent.backprop(self.V)
+            return self.parent.backprop(V)
         return self
     def get_score(self):
         if(self.parent is not None):
